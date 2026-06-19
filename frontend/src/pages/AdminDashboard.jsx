@@ -66,6 +66,15 @@ export default function AdminDashboard() {
   const [smtpPass, setSmtpPass] = useState('');
   const [smtpEnabled, setSmtpEnabled] = useState(false);
 
+  // Delete account states
+  const [deleteModalActive, setDeleteModalActive] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(1); // 1: Password, 2: OTP, 3: Checkbox final
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteOtp, setDeleteOtp] = useState('');
+  const [deleteConfirmCheck, setDeleteConfirmCheck] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState('');
+
   useEffect(() => {
     loadAdminData();
   }, [token]);
@@ -312,6 +321,69 @@ export default function AdminDashboard() {
     return new Date(isoString).toLocaleString();
   };
 
+  // Account Deletion Workflow
+  const handleRequestDeleteOtp = async (e) => {
+    e.preventDefault();
+    setDeleteError('');
+    setDeleteSuccessMsg('');
+
+    if (!deletePassword) {
+      setDeleteError('Password is required');
+      return;
+    }
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/request-delete-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: deletePassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDeleteSuccessMsg(`OTP Code generated: ${data.otp}`);
+        setDeleteStep(2);
+      } else {
+        setDeleteError(data.error || 'Verification failed');
+      }
+    } catch (err) {
+      setDeleteError('Server connection error.');
+    }
+  };
+
+  const handleConfirmDeleteOtp = async (e) => {
+    e.preventDefault();
+    setDeleteError('');
+    setDeleteSuccessMsg('');
+
+    if (!deleteOtp) {
+      setDeleteError('Verification OTP is required');
+      return;
+    }
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/verify-delete-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ otp: deleteOtp })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDeleteSuccessMsg('OTP code verified successfully. Please confirm final acknowledgment.');
+        setDeleteStep(3);
+      } else {
+        setDeleteError(data.error || 'OTP verification failed');
+      }
+    } catch (err) {
+      setDeleteError('Server error.');
+    }
+  };
+
   // Filtered Users List
   const filteredUsers = usersList.filter(u => 
     u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -333,7 +405,7 @@ export default function AdminDashboard() {
           <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Activity size={20} color="#fff" />
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }} className="text-gradient nav-text">CopilotAI Admin</h2>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }} className="text-gradient nav-text">Hirenix Admin</h2>
         </div>
 
         {/* Profile Details Mini-Widget */}
@@ -432,6 +504,23 @@ export default function AdminDashboard() {
             <LogOut size={18} />
             <span className="nav-text">Sign Out</span>
           </button>
+
+          <button 
+            onClick={() => {
+              setDeleteModalActive(true);
+              setDeleteStep(1);
+              setDeletePassword('');
+              setDeleteOtp('');
+              setDeleteConfirmCheck(false);
+              setDeleteError('');
+              setDeleteSuccessMsg('');
+            }}
+            className="btn btn-secondary" 
+            style={{ justifyContent: 'flex-start', padding: '10px 16px', width: '100%', color: 'var(--error)' }}
+          >
+            <Trash size={18} />
+            <span className="nav-text">Delete Account Permanently</span>
+          </button>
         </div>
       </aside>
 
@@ -529,7 +618,7 @@ export default function AdminDashboard() {
             <div style={{ marginBottom: '32px' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>PLATFORM CONTROLLERS</span>
               <h1 style={{ fontSize: '2.2rem' }}>User Directory & Permissions</h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Activate or deactivate candidate accounts, assign administrative roles, and audit biometrics status.</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Activate or deactivate candidate accounts and assign administrative roles.</p>
             </div>
 
             {/* Filter toolbar */}
@@ -555,7 +644,6 @@ export default function AdminDashboard() {
                       <th style={{ padding: '12px' }}>Username</th>
                       <th style={{ padding: '12px' }}>Email</th>
                       <th style={{ padding: '12px' }}>Role</th>
-                      <th style={{ padding: '12px' }}>Biometrics Registered</th>
                       <th style={{ padding: '12px' }}>Created Date</th>
                       <th style={{ padding: '12px' }}>Status</th>
                       <th style={{ padding: '12px' }}>Actions</th>
@@ -569,11 +657,6 @@ export default function AdminDashboard() {
                         <td style={{ padding: '14px 12px' }}>
                           <span style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 'bold', color: item.role === 'admin' ? 'var(--accent)' : 'var(--text-primary)' }}>
                             {item.role}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 12px' }}>
-                          <span style={{ color: item.face_registered ? 'var(--success)' : 'var(--warning)', fontWeight: 600 }}>
-                            {item.face_registered ? 'Yes' : 'No'}
                           </span>
                         </td>
                         <td style={{ padding: '14px 12px' }}>{formatTime(item.registration_date)}</td>
@@ -869,15 +952,6 @@ export default function AdminDashboard() {
                       />
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">Facial Biometrics Liveness Tolerance</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={livenessThreshold}
-                        onChange={(e) => setLivenessThreshold(e.target.value)}
-                      />
-                    </div>
                   </div>
 
                   <div style={{ borderLeft: '1px solid var(--card-border)', paddingLeft: '20px' }}>
@@ -1025,6 +1099,140 @@ export default function AdminDashboard() {
                 {modalMode === 'create' ? 'Insert into Bank' : 'Update Question Bank'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deleteModalActive && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-container" style={{ padding: '36px', maxWidth: '480px' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '1.25rem', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldAlert /> Secure Deletion Wizard
+              </h3>
+              <button onClick={() => setDeleteModalActive(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+
+            {deleteError && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--error)', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>
+                {deleteError}
+              </div>
+            )}
+
+            {deleteSuccessMsg && (
+              <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--success)', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>
+                {deleteSuccessMsg}
+              </div>
+            )}
+
+            {/* STEP 1: Verification Password */}
+            {deleteStep === 1 && (
+              <form onSubmit={handleRequestDeleteOtp}>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                  <strong>Step 1 of 3:</strong> Input your password to initiate OTP deletion code verification.
+                </p>
+                <div className="form-group">
+                  <label className="form-label">Password</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    className="form-input" 
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }}>
+                  Verify & Request OTP
+                </button>
+              </form>
+            )}
+
+            {/* STEP 2: Verification OTP */}
+            {deleteStep === 2 && (
+              <form onSubmit={handleConfirmDeleteOtp}>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                  <strong>Step 2 of 3:</strong> We have generated a deletion OTP code. Input code below to proceed.
+                </p>
+                <div className="form-group">
+                  <label className="form-label">One-Time Password (OTP)</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 123456" 
+                    maxLength="6"
+                    className="form-input" 
+                    style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '1.3rem' }}
+                    value={deleteOtp}
+                    onChange={(e) => setDeleteOtp(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }}>
+                  Confirm OTP Code
+                </button>
+              </form>
+            )}
+
+            {/* STEP 3: Final confirmation Checkbox */}
+            {deleteStep === 3 && (
+              <div>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                  <strong>Step 3 of 3:</strong> Click deletion confirmation checkbox to delete database record.
+                </p>
+                
+                <div style={{ margin: '20px 0', padding: '16px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={deleteConfirmCheck} 
+                      onChange={(e) => setDeleteConfirmCheck(e.target.checked)}
+                      style={{ marginTop: '3px', accentColor: 'var(--error)' }}
+                    />
+                    <div>
+                      <p style={{ fontWeight: 700, color: 'var(--error)' }}>Yes, permanently delete my account</p>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>This deletes resumes, credentials, and match histories immediately.</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => setDeleteModalActive(false)} className="btn btn-secondary" style={{ flex: 1 }}>
+                    Cancel
+                  </button>
+                  <button 
+                    disabled={!deleteConfirmCheck} 
+                    onClick={async () => {
+                      try {
+                        setDeleteError('');
+                        const res = await fetch('http://localhost:5000/api/auth/confirm-delete', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                          },
+                          body: JSON.stringify({ otp: deleteOtp }) // re-validate on confirm
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          alert('Account permanently purged.');
+                          logout();
+                        } else {
+                          setDeleteError(data.error || 'Erase failed.');
+                        }
+                      } catch (err) {
+                        setDeleteError('Server error on erase.');
+                      }
+                    }} 
+                    className={`btn ${deleteConfirmCheck ? 'btn-danger' : 'btn-disabled'}`}
+                    style={{ flex: 1 }}
+                  >
+                    Erase Account Data
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

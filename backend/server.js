@@ -18,6 +18,7 @@ import {
   updateProfile,
   getProfile,
   requestDeleteOtp,
+  verifyDeleteOtp,
   confirmDeleteAccount,
   googleAuthMock
 } from './controllers/authController.js';
@@ -79,6 +80,7 @@ initDb()
     app.post('/api/auth/change-password', authenticateToken, changePassword);
     app.put('/api/auth/update-profile', authenticateToken, updateProfile);
     app.post('/api/auth/request-delete-otp', authenticateToken, requestDeleteOtp);
+    app.post('/api/auth/verify-delete-otp', authenticateToken, verifyDeleteOtp);
     app.post('/api/auth/confirm-delete', authenticateToken, confirmDeleteAccount);
 
     // Resume Routes (Authenticated)
@@ -114,3 +116,4 @@ initDb()
     console.error('Failed to initialize database and server:', err);
     process.exit(1);
   });
+// Trigger database re-seed and auto-recovery on restart

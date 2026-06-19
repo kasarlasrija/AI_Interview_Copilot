@@ -38,20 +38,48 @@ export async function startInterview(req, res) {
       );
     }
 
+    const limit = parseInt(questionCount) || 5;
+
     // Fallbacks if database has no matches
+    const fallbackQuestions = [
+      { id: 101, question_text: `Explain your core workflow when starting a new project in ${role}.`, category: 'technical' },
+      { id: 102, question_text: `What is the most challenging project you have worked on in a ${role} capacity?`, category: 'hr' },
+      { id: 103, question_text: `How do you ensure code quality, documentation, and maintainability in your team?`, category: 'technical' },
+      { id: 104, question_text: `Why do you want to join our company as a ${role}?`, category: 'hr' },
+      { id: 105, question_text: `Describe a situation where you had a disagreement with a team member. How did you resolve it?`, category: 'hr' }
+    ];
+
     if (questions.length === 0) {
-      questions = [
-        { id: 101, question_text: `Explain your core workflow when starting a new project in ${role}.`, category: 'technical' },
-        { id: 102, question_text: `What is the most challenging project you have worked on in a ${role} capacity?`, category: 'hr' },
-        { id: 103, question_text: `How do you ensure code quality, documentation, and maintainability in your team?`, category: 'technical' },
-        { id: 104, question_text: `Why do you want to join our company as a ${role}?`, category: 'hr' },
-        { id: 105, question_text: `Describe a situation where you had a disagreement with a team member. How did you resolve it?`, category: 'hr' }
-      ];
+      questions = [...fallbackQuestions];
+    }
+
+    // If we have fewer matching questions than requested, try to fill with other questions for this role
+    if (questions.length < limit) {
+      const existingIds = questions.map(q => q.id).filter(id => id !== undefined);
+      const queryPlaceholder = existingIds.length > 0 ? `AND id NOT IN (${existingIds.join(',')})` : '';
+      const extraQuestions = await db.all(
+        `SELECT id, question_text, category FROM question_bank WHERE role = ? ${queryPlaceholder}`,
+        [role]
+      );
+      questions = [...questions, ...extraQuestions];
+    }
+
+    // If we are still short, append general fallback questions that aren't already included
+    if (questions.length < limit) {
+      for (const fallback of fallbackQuestions) {
+        if (questions.length >= limit) break;
+        if (!questions.some(q => q.question_text === fallback.question_text)) {
+          questions.push({
+            id: fallback.id,
+            question_text: fallback.question_text,
+            category: fallback.category
+          });
+        }
+      }
     }
 
     // Shuffle questions and select up to requested count
     questions.sort(() => Math.random() - 0.5);
-    const limit = parseInt(questionCount) || 5;
     const selectedQuestions = questions.slice(0, limit);
 
     res.status(200).json({

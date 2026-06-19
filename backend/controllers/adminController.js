@@ -46,6 +46,10 @@ export async function updateUserRole(req, res) {
       return res.status(400).json({ error: 'You cannot modify your own administrative role' });
     }
 
+    if (role === 'admin') {
+      return res.status(400).json({ error: 'Promotion to Admin is disabled. Only the system-seeded root admin is permitted.' });
+    }
+
     await db.run('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
     res.status(200).json({ message: `User role updated to ${role}` });
   } catch (err) {

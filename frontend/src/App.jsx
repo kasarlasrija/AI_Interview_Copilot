@@ -31,7 +31,7 @@ function AppContent() {
           borderTopColor: 'var(--primary)',
           animation: 'spin 1s linear infinite'
         }}></div>
-        <h2 style={{ fontFamily: 'var(--font-title)', fontWeight: 600 }}>AI Interview Copilot</h2>
+        <h2 style={{ fontFamily: 'var(--font-title)', fontWeight: 600 }}>Hirenix AI</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Securing access & loading environment...</p>
         <style>{`
           @keyframes spin {

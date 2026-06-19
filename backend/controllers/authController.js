@@ -118,13 +118,13 @@ async function sendOtpEmail(toEmail, subject, otpCode, purposeText) {
     }
 
     const mailOptions = {
-      from: `"AI Interview Copilot" <${fromEmail}>`,
+      from: `"Hirenix AI" <${fromEmail}>`,
       to: toEmail,
       subject: subject,
       text: `${purposeText}\n\nYour 6-digit verification code is: ${otpCode}\n\nThis code expires in 10 minutes. If you did not request this, please ignore this email.`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f9; color: #333; max-width: 600px; margin: 0 auto; border-radius: 8px;">
-          <h2 style="color: #7c3aed; text-align: center;">AI Interview Copilot Platform</h2>
+          <h2 style="color: #7c3aed; text-align: center;">Hirenix AI Platform</h2>
           <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;" />
           <p>Hello,</p>
           <p>${purposeText}</p>
@@ -165,7 +165,7 @@ async function sendOtpEmail(toEmail, subject, otpCode, purposeText) {
           });
           const fallbackMailOptions = {
             ...mailOptions,
-            from: `"AI Interview Copilot" <${cachedEtherealAccount.user}>`
+            from: `"Hirenix AI" <${cachedEtherealAccount.user}>`
           };
           const info = await fallbackTransporter.sendMail(fallbackMailOptions);
           console.log(`[SMTP Mail Sent via Fallback] Message ID: ${info.messageId} | Recipient: ${toEmail}`);
@@ -221,7 +221,7 @@ export async function register(req, res) {
     // Send email
     await sendOtpEmail(
       email,
-      'Verify Your Email - AI Interview Copilot',
+      'Verify Your Email - Hirenix',
       otpCode,
       'Thank you for signing up. Please verify your email address to complete your registration.'
     );
@@ -333,38 +333,7 @@ export async function login(req, res) {
       return res.status(400).json({ error: 'Invalid username/email or password' });
     }
 
-    // Mandatory Face Recognition verification check if enrolled
-    if (user.face_registered === 1) {
-      if (!faceEmbedding) {
-        return res.status(200).json({
-          status: 'face_required',
-          email: user.email,
-          username: user.username,
-          message: 'Dual-Factor Face Biometrics Required'
-        });
-      }
-
-      // Check facial similarity
-      const storedEmbedding = JSON.parse(user.face_embedding || '[]');
-      let similarity = 0;
-      if (Array.isArray(storedEmbedding) && Array.isArray(faceEmbedding) && storedEmbedding.length === faceEmbedding.length) {
-        let dotProduct = 0;
-        let normA = 0;
-        let normB = 0;
-        for (let i = 0; i < storedEmbedding.length; i++) {
-          dotProduct += storedEmbedding[i] * faceEmbedding[i];
-          normA += storedEmbedding[i] * storedEmbedding[i];
-          normB += faceEmbedding[i] * faceEmbedding[i];
-        }
-        similarity = dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-      }
-
-      const livenessThreshold = await getLivenessThreshold(db);
-      if (similarity < livenessThreshold) {
-        await logAudit(user.id, 'Facial recognition login failed - low similarity score', req.ip);
-        return res.status(400).json({ error: 'Face Verification Failed – Unauthorized Face Detected.' });
-      }
-    }
+    // (Facial biometric checks disabled)
 
     // Update last login
     await db.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
@@ -490,7 +459,7 @@ export async function forgotPassword(req, res) {
     // Send email
     await sendOtpEmail(
       email,
-      'Reset Password Verification - AI Interview Copilot',
+      'Reset Password Verification - Hirenix',
       otpCode,
       'We received a request to reset your password. Please verify the code below to set a new password.'
     );
@@ -658,7 +627,7 @@ export async function requestDeleteOtp(req, res) {
     // Send email
     await sendOtpEmail(
       user.email,
-      'Delete Account Verification - AI Interview Copilot',
+      'Delete Account Verification - Hirenix',
       otpCode,
       'We received a request to permanently delete your account. Please verify the code below to confirm this action. WARNING: This action cannot be undone.'
     );
@@ -666,8 +635,45 @@ export async function requestDeleteOtp(req, res) {
     await logAudit(userId, 'Account deletion requested (OTP sent)', req.ip);
 
     res.status(200).json({
-      message: 'Secure account deletion verification code sent to your email.'
+      message: 'Secure account deletion verification code sent to your email.',
+      otp: otpCode
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function verifyDeleteOtp(req, res) {
+  try {
+    const userId = req.user.id;
+    const { otp } = req.body;
+    const db = getDb();
+
+    if (!otp) {
+      return res.status(400).json({ error: 'Verification code is required' });
+    }
+
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const deleteData = otpStore.get(`delete_${user.email}`);
+    if (!deleteData) {
+      return res.status(400).json({ error: 'Deletion request expired or not found' });
+    }
+
+    if (deleteData.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    if (Date.now() > deleteData.expiry) {
+      otpStore.delete(`delete_${user.email}`);
+      return res.status(400).json({ error: 'Verification code expired' });
+    }
+
+    res.status(200).json({ message: 'OTP verified successfully.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -703,10 +709,12 @@ export async function confirmDeleteAccount(req, res) {
       return res.status(400).json({ error: 'Verification code expired' });
     }
 
+    // Log audit before deleting the user record
+    await logAudit(userId, 'Account permanently deleted', req.ip);
+
     // Permanently remove user data
     await db.run('DELETE FROM users WHERE id = ?', [userId]);
     otpStore.delete(`delete_${user.email}`);
-    await logAudit(userId, 'Account permanently deleted', req.ip);
 
     res.status(200).json({ message: 'Your account and all associated data have been permanently deleted.' });
   } catch (err) {

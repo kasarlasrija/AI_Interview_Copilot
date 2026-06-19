@@ -116,16 +116,29 @@ export async function initDb() {
     console.log('SQLite schema initialized.');
   }
 
-  // Seed Admin & Regular User if not present
-  const adminExists = await db.get('SELECT * FROM users WHERE username = ?', ['admin']);
+  // Seed Root Admin & Regular User
+  const adminEmail = 'aicopilotplatform@gmail.com';
+  const adminHash = bcrypt.hashSync('aicopilotplatform@123', 10);
+  
+  // Delete all other accounts created as admin
+  await db.run("DELETE FROM users WHERE role = 'admin' AND email != ?", [adminEmail]);
+  // Also clean up any old default seeded admin username if it exists
+  await db.run("DELETE FROM users WHERE username = 'admin' AND email != ?", [adminEmail]);
+
+  const adminExists = await db.get('SELECT * FROM users WHERE email = ?', [adminEmail]);
   if (!adminExists) {
-    const adminHash = bcrypt.hashSync('admin123', 10);
     await db.run(
       `INSERT INTO users (email, username, password_hash, role, status, is_email_verified, face_registered) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['admin@interviewcopilot.com', 'admin', adminHash, 'admin', 'active', 1, 0]
+      [adminEmail, 'admin', adminHash, 'admin', 'active', 1, 0]
     );
-    console.log('Admin account seeded (admin@interviewcopilot.com / admin123)');
+    console.log(`Admin account seeded (${adminEmail} / aicopilotplatform@123)`);
+  } else {
+    // Ensure credentials match target requirements
+    await db.run(
+      `UPDATE users SET password_hash = ?, role = 'admin', status = 'active' WHERE email = ?`,
+      [adminHash, adminEmail]
+    );
   }
 
   const userExists = await db.get('SELECT * FROM users WHERE username = ?', ['user']);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Sun, Moon, Cpu, Award, ShieldCheck, Zap, FileText, HelpCircle, ArrowRight } from 'lucide-react';
+import { Sun, Moon, Cpu, Award, Zap, FileText, HelpCircle, ArrowRight } from 'lucide-react';
 
 export default function LandingPage() {
   const { setCurrentPage } = useAuth();
@@ -23,7 +23,7 @@ export default function LandingPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Cpu size={28} color="var(--primary)" />
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }} className="text-gradient">CopilotAI</h2>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }} className="text-gradient">Hirenix</h2>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -70,7 +70,7 @@ export default function LandingPage() {
 
           <h1 style={{ fontSize: '3.8rem', lineHeight: '1.1', marginBottom: '24px', fontWeight: 800 }}>
             Master Your Next Interview With <br />
-            <span className="text-gradient">AI-Powered Copilot</span>
+            <span className="text-gradient">Hirenix AI</span>
           </h1>
           
           <p style={{ 
@@ -118,14 +118,6 @@ export default function LandingPage() {
             </div>
 
             <div className="glass-card">
-              <ShieldCheck size={40} color="var(--accent)" style={{ marginBottom: '16px' }} />
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Facial Biometric Security</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                Register your facial features with device camera and authenticate securely using instant facial embedding matching and liveness detection.
-              </p>
-            </div>
-
-            <div className="glass-card">
               <Zap size={40} color="var(--success)" style={{ marginBottom: '16px' }} />
               <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Speech & Confidence Analysis</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
@@ -145,10 +137,7 @@ export default function LandingPage() {
             <h3 style={{ fontSize: '2.5rem', fontWeight: 800 }} className="text-gradient">15k+</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Interviews Conducted</p>
           </div>
-          <div>
-            <h3 style={{ fontSize: '2.5rem', fontWeight: 800 }} className="text-gradient">120ms</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Facial Recognition Speed</p>
-          </div>
+
           <div>
             <h3 style={{ fontSize: '2.5rem', fontWeight: 800 }} className="text-gradient">100%</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>GDPR Compliant & Encrypted</p>
@@ -165,7 +154,7 @@ export default function LandingPage() {
         color: 'var(--text-secondary)',
         fontSize: '0.9rem'
       }}>
-        <p>&copy; {new Date().getFullYear()} CopilotAI Platform. Built for Enterprise-Grade Interview Assessments.</p>
+        <p>&copy; {new Date().getFullYear()} Hirenix Platform. Built for Enterprise-Grade Interview Assessments.</p>
       </footer>
     </div>
   );

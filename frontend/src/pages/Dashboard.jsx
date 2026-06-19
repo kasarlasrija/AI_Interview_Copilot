@@ -736,11 +736,55 @@ export default function Dashboard() {
 
   const countAchievements = () => {
     let count = 1; // default enrolled badge
-    if (user?.faceRegistered) count += 1;
     if (resumes.length > 0) count += 1;
     if (interviews.length > 0) count += 1;
     if (interviews.some(i => i.score >= 80)) count += 1;
     return count;
+  };
+
+  const getYouTubeVideoForSkill = (skill) => {
+    if (!skill) return { url: '', title: '' };
+    const skillLower = skill.toLowerCase();
+    if (skillLower.includes('react') || skillLower.includes('frontend') || skillLower.includes('js') || skillLower.includes('javascript') || skillLower.includes('html') || skillLower.includes('css')) {
+      return {
+        url: 'https://www.youtube.com/embed/bMknfKXIFA8',
+        title: 'React JS Full Course for Beginners - freeCodeCamp'
+      };
+    }
+    if (skillLower.includes('docker')) {
+      return {
+        url: 'https://www.youtube.com/embed/3c-iBn73dDE',
+        title: 'Docker Tutorial for Beginners [Full Course] - TechWorld with Nana'
+      };
+    }
+    if (skillLower.includes('kubernetes') || skillLower.includes('k8s')) {
+      return {
+        url: 'https://www.youtube.com/embed/X48VuDVv0do',
+        title: 'Kubernetes Tutorial for Beginners [Full Course] - TechWorld with Nana'
+      };
+    }
+    if (skillLower.includes('devops') || skillLower.includes('cloud')) {
+      return {
+        url: 'https://www.youtube.com/embed/scEDHsr3APg',
+        title: 'DevOps Engineering Course for Beginners - freeCodeCamp'
+      };
+    }
+    if (skillLower.includes('transformer') || skillLower.includes('attention') || skillLower.includes('machine learning') || skillLower.includes('ml') || skillLower.includes('python') || skillLower.includes('data science') || skillLower.includes('ai')) {
+      return {
+        url: 'https://www.youtube.com/embed/kCc8FmEb1nY',
+        title: 'Intro to Large Language Models - Andrej Karpathy'
+      };
+    }
+    if (skillLower.includes('sql') || skillLower.includes('database') || skillLower.includes('postgresql') || skillLower.includes('mysql') || skillLower.includes('nosql') || skillLower.includes('mongodb')) {
+      return {
+        url: 'https://www.youtube.com/embed/HXV3zeQKqGY',
+        title: 'SQL Tutorial for Beginners - freeCodeCamp'
+      };
+    }
+    return {
+      url: 'https://www.youtube.com/embed/zojy2nI65gU',
+      title: 'System Design Course for Beginners - freeCodeCamp'
+    };
   };
 
   return (
@@ -882,9 +926,9 @@ export default function Dashboard() {
                 <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>CANDIDATE INTERFACE</span>
                 <h1 style={{ fontSize: '2.2rem' }}>Welcome Back, {user?.username}!</h1>
               </div>
-              <div style={{ background: 'rgba(124, 58, 237, 0.05)', padding: '10px 16px', borderRadius: '12px', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '10px 16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }}></div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Biometric Active: {user?.faceRegistered ? 'Enabled' : 'Setup Required'}</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>System Secured</span>
               </div>
             </div>
 
@@ -1287,23 +1331,30 @@ export default function Dashboard() {
                   {/* Left Column: Sandbox and Video */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
-                    {/* Simulated Video Course Component */}
+                    {/* YouTube Video Course Component */}
                     <div className="glass-container" style={{ padding: '24px' }}>
-                      <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>Curated Masterclass Stream</h3>
-                      <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#0a0718', borderRadius: '12px', border: '1px solid var(--card-border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(124,58,237,0.15)', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}>
-                          <Play size={28} color="var(--primary)" />
-                        </div>
-                        <p style={{ marginTop: '12px', fontSize: '0.9rem', fontWeight: 600 }}>Video: Advanced Production {learningSkillSelected} Patterns</p>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Duration: 45 minutes | Recommended Priority: High</span>
-                        {/* Aesthetic sound waves simulator */}
-                        <div style={{ position: 'absolute', bottom: '16px', display: 'flex', gap: '4px' }}>
-                          <div className="waveform-bar" style={{ animationDelay: '0.1s', height: '8px' }}></div>
-                          <div className="waveform-bar" style={{ animationDelay: '0.3s', height: '8px' }}></div>
-                          <div className="waveform-bar" style={{ animationDelay: '0.5s', height: '8px' }}></div>
-                          <div className="waveform-bar" style={{ animationDelay: '0.7s', height: '8px' }}></div>
-                        </div>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>Curated YouTube Class</h3>
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#0a0718', borderRadius: '12px', border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+                        {(() => {
+                          const videoData = getYouTubeVideoForSkill(learningSkillSelected);
+                          return (
+                            <iframe 
+                              width="100%" 
+                              height="100%" 
+                              src={videoData.url} 
+                              title={videoData.title}
+                              frameBorder="0" 
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                              allowFullScreen
+                              style={{ display: 'block', borderRadius: '12px' }}
+                            ></iframe>
+                          );
+                        })()}
                       </div>
+                      <p style={{ marginTop: '12px', fontSize: '0.9rem', fontWeight: 600 }}>
+                        {getYouTubeVideoForSkill(learningSkillSelected).title}
+                      </p>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Targeted Class | Recommended Priority: High</span>
                     </div>
 
                     {/* Interactive Code Editor Sandbox */}
@@ -1860,7 +1911,7 @@ CMD ["node", "server.js"]`
                     </div>
 
                     <div className="glass-card" style={{ textAlign: 'center', borderTop: '4px solid var(--secondary)' }}>
-                      <h3 style={{ fontSize: '2.8rem', fontWeight: 800, color: 'var(--secondary)' }}>{evaluationResult.correctness}%</h3>
+                      <h3 style={{ fontSize: '2.8rem', fontWeight: 800, color: 'var(--secondary)' }}>{evaluationResult.accuracy}%</h3>
                       <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Correctness / Depth</p>
                     </div>
 
@@ -2139,12 +2190,6 @@ CMD ["node", "server.js"]`
                     <span style={{ fontWeight: 600, color: 'var(--success)' }}>Verified</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Facial Biometrics:</span>
-                    <span style={{ fontWeight: 600, color: user?.faceRegistered ? 'var(--success)' : 'var(--warning)' }}>
-                      {user?.faceRegistered ? 'Active Embeddings' : 'Pending Enrollment'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Joined Date:</span>
                     <span style={{ fontWeight: 600 }}>{formatTime(user?.registrationDate)}</span>
                   </div>
@@ -2302,43 +2347,6 @@ CMD ["node", "server.js"]`
                 </form>
               </div>
 
-              {/* Facial Re-enrollment Box */}
-              <div className="glass-container" style={{ padding: '32px' }}>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Biometric Facial Management</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                  Updating your facial embeddings will replace currently stored biometrics. Ensure you are in a well-lit room.
-                </p>
-
-                {!cameraActive ? (
-                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6,182,212,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto', color: 'var(--secondary)' }}>
-                      <Camera size={38} />
-                    </div>
-                    <button onClick={startCamera} className="btn btn-primary" style={{ width: '100%' }}>
-                      Re-Enroll Facial Embeddings
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="scanner-viewport">
-                      <video ref={videoRef} className="scanner-video" autoPlay playsInline muted></video>
-                      <canvas ref={webcamCanvasRef} width="640" height="480" className="scanner-canvas"></canvas>
-                      <div className="scan-laser"></div>
-                    </div>
-                    <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                      <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{scanMessage}</p>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Verification levels: {scanProgress}%</p>
-                      <button 
-                        onClick={stopCamera} 
-                        className="btn btn-secondary" 
-                        style={{ marginTop: '12px', padding: '6px 12px', fontSize: '0.8rem' }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Account Deletion Panel */}
               <div className="glass-container" style={{ padding: '32px', gridColumn: 'span 2' }}>
@@ -2362,27 +2370,36 @@ CMD ["node", "server.js"]`
 
       {/* MODAL 1: PREVIEW SPECIFIC HISTORY CRITIQUE */}
       {selectedReport && (
-        <div className="modal-overlay hide-on-print">
+        <div className="modal-overlay">
           <div className="modal-content glass-container" style={{ padding: '36px', maxWidth: '700px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
                 <h2 style={{ fontSize: '1.4rem' }}>AI Feedback Report Audit</h2>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Score Rating: <strong>{selectedReport.score}%</strong></span>
               </div>
-              <button 
-                onClick={() => setSelectedReport(null)} 
-                className="btn btn-secondary" 
-                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
-              >
-                Close View
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }} className="hide-on-print">
+                <button 
+                  onClick={handlePrintPDF} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <Printer size={14} /> Export PDF
+                </button>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                >
+                  Close View
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'center' }}>
                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px' }}>
-                  <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{selectedReport.correctness}%</p>
+                  <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{selectedReport.accuracy}%</p>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Correctness</span>
                 </div>
                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px' }}>
@@ -2540,7 +2557,7 @@ CMD ["node", "server.js"]`
                     />
                     <div>
                       <p style={{ fontWeight: 700, color: 'var(--error)' }}>Yes, permanently delete my account</p>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>This deletes resumes, credentials, match histories, and biometrics immediately.</span>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>This deletes resumes, credentials, and match histories immediately.</span>
                     </div>
                   </label>
                 </div>
@@ -2584,23 +2601,24 @@ CMD ["node", "server.js"]`
 
       <style>{`
         @media print {
+          body * {
+            visibility: hidden;
+          }
+          .printable-report, .printable-report *,
+          .modal-content, .modal-content * {
+            visibility: visible;
+          }
           .hide-on-print,
-          aside.sidebar,
-          header,
-          button,
           .hide-on-print * {
             display: none !important;
           }
-          .main-content {
-            margin-left: 0 !important;
-            padding: 0 !important;
+          .printable-report, .modal-content {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
-          }
-          .printable-report, .printable-report * {
             background: white !important;
             color: black !important;
-          }
-          .printable-report {
             padding: 20px !important;
             font-size: 11pt !important;
           }
