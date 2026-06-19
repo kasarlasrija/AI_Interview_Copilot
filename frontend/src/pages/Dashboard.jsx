@@ -18,6 +18,7 @@ import {
   Play,
   Sparkles,
   Check,
+  CheckCircle,
   X,
   ShieldAlert,
   Info,
@@ -795,7 +796,7 @@ export default function Dashboard() {
           <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Sparkles size={20} color="#fff" />
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }} className="text-gradient nav-text">CopilotAI</h2>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }} className="text-gradient nav-text">Hirenix AI</h2>
         </div>
 
         {/* Profile Details Mini-Widget */}
@@ -1712,7 +1713,7 @@ CMD ["node", "server.js"]`
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '14px', marginTop: '16px' }}
                   >
-                    Initiate Copilot Interview Setup
+                    Initiate Hirenix Interview Setup
                   </button>
                 </div>
               </div>
@@ -2101,21 +2102,21 @@ CMD ["node", "server.js"]`
                   <Award size={36} />
                 </div>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '6px' }}>Enrolled Officer</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Verify account registration on the Copilot Platform.</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Verify account registration on the Hirenix Platform.</p>
                 <span style={{ fontSize: '0.75rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--success)', padding: '2px 8px', borderRadius: '4px' }}>
                   Completed
                 </span>
               </div>
 
               {/* Badge 2 */}
-              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', opacity: user?.faceRegistered ? 1 : 0.4 }}>
+              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', opacity: 1 }}>
                 <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.1)', color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid rgba(6,182,212,0.2)' }}>
-                  <Video size={36} />
+                  <CheckCircle size={36} />
                 </div>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '6px' }}>Facial Biometrics Secured</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Verify presence using camera device scanning.</p>
-                <span style={{ fontSize: '0.75rem', background: user?.faceRegistered ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.05)', border: user?.faceRegistered ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--card-border)', color: user?.faceRegistered ? 'var(--success)' : 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-                  {user?.faceRegistered ? 'Completed' : 'Locked'}
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '6px' }}>Verified Candidate</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Account verified and activated successfully.</p>
+                <span style={{ fontSize: '0.75rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--success)', padding: '2px 8px', borderRadius: '4px' }}>
+                  Completed
                 </span>
               </div>
 
