@@ -4,26 +4,115 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import pg from 'pg';
+
+const { Pool } = pg;
+
+// Parse PG bigint (OID 20) and numeric (OID 1700) as JS numbers
+pg.types.setTypeParser(20, (val) => parseInt(val, 10));
+pg.types.setTypeParser(1700, (val) => parseFloat(val));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const dbPath = path.join(__dirname, 'database.sqlite');
 const schemaPath = path.join(__dirname, 'schema.sql');
+const schemaPgPath = path.join(__dirname, 'schema_pg.sql');
 
 let db;
+let isPostgres = false;
+
+class PgDbWrapper {
+  constructor(pool) {
+    this.pool = pool;
+  }
+
+  convertSql(sql, params) {
+    let index = 1;
+    // Map '?' to '$1', '$2', ...
+    const pgSql = sql.replace(/\?/g, () => `$${index++}`);
+    return { pgSql, pgParams: params || [] };
+  }
+
+  async get(sql, params) {
+    const { pgSql, pgParams } = this.convertSql(sql, params);
+    const res = await this.pool.query(pgSql, pgParams);
+    return res.rows[0];
+  }
+
+  async all(sql, params) {
+    const { pgSql, pgParams } = this.convertSql(sql, params);
+    const res = await this.pool.query(pgSql, pgParams);
+    return res.rows;
+  }
+
+  async run(sql, params) {
+    let trimmedSql = sql.trim();
+    const isInsert = /^\s*insert\s+/i.test(trimmedSql);
+    if (isInsert && !/returning\s+/i.test(trimmedSql)) {
+      trimmedSql = `${trimmedSql} RETURNING id`;
+    }
+
+    const { pgSql, pgParams } = this.convertSql(trimmedSql, params);
+    const res = await this.pool.query(pgSql, pgParams);
+
+    const lastID = res.rows.length > 0 ? res.rows[0].id : null;
+    const changes = res.rowCount;
+    return { lastID, changes };
+  }
+
+  async exec(sql) {
+    await this.pool.query(sql);
+  }
+}
 
 export async function initDb() {
   if (db) return db;
 
-  db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  const databaseUrl = process.env.DATABASE_URL;
 
-  // Read and execute schema
-  const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-  await db.exec(schemaSql);
+  if (databaseUrl) {
+    console.log('PostgreSQL DATABASE_URL found. Initializing PostgreSQL pool...');
+    isPostgres = true;
+
+    const pgConfig = {
+      connectionString: databaseUrl,
+      ssl: databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1')
+        ? false
+        : { rejectUnauthorized: false }
+    };
+
+    const pool = new Pool(pgConfig);
+    
+    // Test connection
+    try {
+      await pool.query('SELECT NOW()');
+      console.log('PostgreSQL database connected successfully.');
+    } catch (err) {
+      console.error('Failed to connect to PostgreSQL database:', err.message);
+      throw err;
+    }
+
+    db = new PgDbWrapper(pool);
+
+    // Read and execute Postgres schema
+    const schemaSql = fs.readFileSync(schemaPgPath, 'utf8');
+    await db.exec(schemaSql);
+    console.log('PostgreSQL schema initialized.');
+  } else {
+    console.log('No DATABASE_URL found. Falling back to SQLite...');
+    isPostgres = false;
+
+    db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+
+    // Read and execute SQLite schema
+    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+    await db.exec(schemaSql);
+    console.log('SQLite schema initialized.');
+  }
 
   // Seed Admin & Regular User if not present
   const adminExists = await db.get('SELECT * FROM users WHERE username = ?', ['admin']);
@@ -50,7 +139,8 @@ export async function initDb() {
 
   // Seed Question Bank
   const count = await db.get('SELECT COUNT(*) as cnt FROM question_bank');
-  if (count.cnt === 0) {
+  const countVal = count ? parseInt(count.cnt, 10) : 0;
+  if (countVal === 0) {
     const sampleQuestions = [
       // Software Engineer - Technical
       { role: 'Software Engineer', category: 'technical', difficulty: 'Easy', question_text: 'Explain the difference between let, const, and var in JavaScript.' },
@@ -89,7 +179,8 @@ export async function initDb() {
 
   // Seed default settings
   const settingsCount = await db.get('SELECT COUNT(*) as cnt FROM settings');
-  if (settingsCount.cnt === 0) {
+  const settingsCountVal = settingsCount ? parseInt(settingsCount.cnt, 10) : 0;
+  if (settingsCountVal === 0) {
     await db.run("INSERT INTO settings (key, value) VALUES ('model_endpoint', 'Gemini 3.5 Flash')");
     await db.run("INSERT INTO settings (key, value) VALUES ('session_lifetime', '24 Hours')");
     await db.run("INSERT INTO settings (key, value) VALUES ('otp_expiry', '10 Minutes')");
@@ -111,3 +202,4 @@ export function getDb() {
   }
   return db;
 }
+
