@@ -13,7 +13,8 @@ export default function AuthPage() {
     registerFace, 
     forgotPassword, 
     resetPassword,
-    setCurrentPage 
+    setCurrentPage,
+    logout
   } = useAuth();
   
   const { theme, toggleTheme } = useTheme();
@@ -250,12 +251,6 @@ export default function AuthPage() {
       setErrorMsg('Please enter all credentials');
       return;
     }
-    
-    // Safety check for administrative role
-    if (isAdminSignIn && signInIdentifier !== 'admin' && !signInIdentifier.includes('admin')) {
-      setErrorMsg('This credential is not authorized for administrative entry');
-      return;
-    }
 
     try {
       const res = await login(signInIdentifier, signInPassword);
@@ -264,6 +259,13 @@ export default function AuthPage() {
         setSignInMethod('face');
         setSuccessMsg('Dual-Factor Face Biometrics Required – Please complete face recognition authentication to enter.');
         startCamera();
+        return;
+      }
+
+      // Verify that users signing in as admin actually have the admin role
+      if (isAdminSignIn && res && res.user && res.user.role !== 'admin') {
+        logout();
+        setErrorMsg('This credential is not authorized for administrative entry');
       }
     } catch (err) {
       setErrorMsg(err.message);
