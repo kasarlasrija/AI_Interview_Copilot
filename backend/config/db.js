@@ -49,14 +49,16 @@ class PgDbWrapper {
   async run(sql, params) {
     let trimmedSql = sql.trim();
     const isInsert = /^\s*insert\s+/i.test(trimmedSql);
-    if (isInsert && !/returning\s+/i.test(trimmedSql)) {
+    const isSettings = /insert\s+into\s+settings/i.test(trimmedSql);
+    if (isInsert && !isSettings && !/returning\s+/i.test(trimmedSql)) {
       trimmedSql = `${trimmedSql} RETURNING id`;
     }
 
     const { pgSql, pgParams } = this.convertSql(trimmedSql, params);
     const res = await this.pool.query(pgSql, pgParams);
 
-    const lastID = res.rows.length > 0 ? res.rows[0].id : null;
+    // If it's settings, return key or null; otherwise return id
+    const lastID = res.rows.length > 0 ? (res.rows[0].id || res.rows[0].key || null) : null;
     const changes = res.rowCount;
     return { lastID, changes };
   }
