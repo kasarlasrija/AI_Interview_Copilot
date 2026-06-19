@@ -138,14 +138,48 @@ async function sendOtpEmail(toEmail, subject, otpCode, purposeText) {
       `
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[SMTP Mail Sent] Message ID: ${info.messageId} | Recipient: ${toEmail}`);
-    if (isEthereal) {
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      console.log(`[Ethereal Email Preview URL] Click to view: ${previewUrl}`);
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[SMTP Mail Sent] Message ID: ${info.messageId} | Recipient: ${toEmail}`);
+      if (isEthereal) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(`[Ethereal Email Preview URL] Click to view: ${previewUrl}`);
+      }
+    } catch (err) {
+      if (enabled) {
+        console.error('Custom SMTP delivery failed. Falling back to Ethereal simulator...', err.message);
+        try {
+          if (!cachedEtherealAccount) {
+            console.log('Generating fallback Ethereal email test account...');
+            cachedEtherealAccount = await nodemailer.createTestAccount();
+            console.log(`Ethereal Account Generated: ${cachedEtherealAccount.user}`);
+          }
+          const fallbackTransporter = nodemailer.createTransport({
+            host: cachedEtherealAccount.smtp.host,
+            port: cachedEtherealAccount.smtp.port,
+            secure: cachedEtherealAccount.smtp.secure,
+            auth: {
+              user: cachedEtherealAccount.user,
+              pass: cachedEtherealAccount.pass
+            }
+          });
+          const fallbackMailOptions = {
+            ...mailOptions,
+            from: `"AI Interview Copilot" <${cachedEtherealAccount.user}>`
+          };
+          const info = await fallbackTransporter.sendMail(fallbackMailOptions);
+          console.log(`[SMTP Mail Sent via Fallback] Message ID: ${info.messageId} | Recipient: ${toEmail}`);
+          const previewUrl = nodemailer.getTestMessageUrl(info);
+          console.log(`[Ethereal Email Preview URL] Click to view: ${previewUrl}`);
+        } catch (fallbackErr) {
+          console.error('Nodemailer fallback failed to send email:', fallbackErr.message);
+        }
+      } else {
+        console.error('Nodemailer failed to send email:', err.message);
+      }
     }
-  } catch (err) {
-    console.error('Nodemailer failed to send email:', err);
+  } catch (outerErr) {
+    console.error('Nodemailer helper encountered outer error:', outerErr.message);
   }
 }
 
@@ -168,20 +202,32 @@ export async function register(req, res) {
     // Hash password
     const passwordHash = bcrypt.hashSync(password, 10);
     const targetRole = role === 'admin' ? 'admin' : 'user';
-    
-    // Create active user (email is automatically verified)
-    const result = await db.run(
-      `INSERT INTO users (email, username, password_hash, role, status, is_email_verified) 
-       VALUES (?, ?, ?, ?, 'active', 1)`,
-      [email, username, passwordHash, targetRole]
+
+    // Generate random 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryTime = await getOtpExpiryTime(db);
+    const expiry = Date.now() + expiryTime;
+
+    // Save in-memory registration session
+    otpStore.set(`register_${email}`, {
+      username,
+      email,
+      passwordHash,
+      role: targetRole,
+      otp: otpCode,
+      expiry
+    });
+
+    // Send email
+    await sendOtpEmail(
+      email,
+      'Verify Your Email - AI Interview Copilot',
+      otpCode,
+      'Thank you for signing up. Please verify your email address to complete your registration.'
     );
 
-    const userId = result.lastID;
-
-    await logAudit(userId, 'Account created successfully', req.ip);
-
     res.status(201).json({
-      message: 'Account created successfully. You can now complete facial registration.',
+      message: 'OTP verification code sent to your email. Please verify to complete signup.',
       email
     });
   } catch (err) {
@@ -191,7 +237,47 @@ export async function register(req, res) {
 }
 
 export async function verifyOtp(req, res) {
-  res.status(200).json({ message: 'Email verified successfully. You can now complete facial registration.' });
+  try {
+    const { email, otp } = req.body;
+    const db = getDb();
+
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and verification code are required' });
+    }
+
+    const signupData = otpStore.get(`register_${email}`);
+    if (!signupData) {
+      return res.status(400).json({ error: 'Verification session expired or not found. Please sign up again.' });
+    }
+
+    if (signupData.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    if (Date.now() > signupData.expiry) {
+      otpStore.delete(`register_${email}`);
+      return res.status(400).json({ error: 'Verification code expired. Please sign up again.' });
+    }
+
+    // Insert user into database
+    const result = await db.run(
+      `INSERT INTO users (email, username, password_hash, role, status, is_email_verified) 
+       VALUES (?, ?, ?, ?, 'active', 1)`,
+      [signupData.email, signupData.username, signupData.passwordHash, signupData.role]
+    );
+
+    const userId = result.lastID;
+
+    // Clean up session
+    otpStore.delete(`register_${email}`);
+
+    await logAudit(userId, 'Account created and email verified successfully', req.ip);
+
+    res.status(200).json({ message: 'Email verified successfully. You can now complete facial registration.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 }
 
 export async function registerFace(req, res) {
@@ -394,13 +480,25 @@ export async function forgotPassword(req, res) {
       return res.status(404).json({ error: 'No account found with this email' });
     }
 
-    // Auto-approve with dummy OTP to maintain frontend compatibility
-    otpStore.set(`reset_${email}`, { otp: '123456', userId: user.id, expiry: Date.now() + 600000 });
+    // Generate random 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryTime = await getOtpExpiryTime(db);
+    const expiry = Date.now() + expiryTime;
 
-    await logAudit(user.id, 'Password reset requested (OTP bypassed)', req.ip);
+    otpStore.set(`reset_${email}`, { otp: otpCode, userId: user.id, expiry });
+
+    // Send email
+    await sendOtpEmail(
+      email,
+      'Reset Password Verification - AI Interview Copilot',
+      otpCode,
+      'We received a request to reset your password. Please verify the code below to set a new password.'
+    );
+
+    await logAudit(user.id, 'Password reset requested (OTP sent)', req.ip);
 
     res.status(200).json({
-      message: 'Reset request approved. Please enter your new password.',
+      message: 'Reset verification code sent to your email.',
       email
     });
   } catch (err) {
@@ -411,8 +509,26 @@ export async function forgotPassword(req, res) {
 
 export async function resetPassword(req, res) {
   try {
-    const { email, newPassword } = req.body;
+    const { email, otp, newPassword } = req.body;
     const db = getDb();
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    const resetData = otpStore.get(`reset_${email}`);
+    if (!resetData) {
+      return res.status(400).json({ error: 'Reset session expired or not found. Please request another code.' });
+    }
+
+    if (resetData.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    if (Date.now() > resetData.expiry) {
+      otpStore.delete(`reset_${email}`);
+      return res.status(400).json({ error: 'Verification code expired. Please request another code.' });
+    }
 
     const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
     if (!user) {
@@ -520,7 +636,6 @@ export async function getProfile(req, res) {
   }
 }
 
-// 3-Step Secure Account Deletion Workflow
 export async function requestDeleteOtp(req, res) {
   try {
     const userId = req.user.id;
@@ -533,13 +648,25 @@ export async function requestDeleteOtp(req, res) {
       return res.status(400).json({ error: 'Password validation failed' });
     }
 
-    // Auto-approve with dummy deletion state
-    otpStore.set(`delete_${user.email}`, { otp: '123456', expiry: Date.now() + 600000 });
+    // Generate random 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryTime = await getOtpExpiryTime(db);
+    const expiry = Date.now() + expiryTime;
 
-    await logAudit(userId, 'Account deletion requested (OTP bypassed)', req.ip);
+    otpStore.set(`delete_${user.email}`, { otp: otpCode, expiry });
+
+    // Send email
+    await sendOtpEmail(
+      user.email,
+      'Delete Account Verification - AI Interview Copilot',
+      otpCode,
+      'We received a request to permanently delete your account. Please verify the code below to confirm this action. WARNING: This action cannot be undone.'
+    );
+
+    await logAudit(userId, 'Account deletion requested (OTP sent)', req.ip);
 
     res.status(200).json({
-      message: 'Secure account deletion request approved.'
+      message: 'Secure account deletion verification code sent to your email.'
     });
   } catch (err) {
     console.error(err);
@@ -550,10 +677,35 @@ export async function requestDeleteOtp(req, res) {
 export async function confirmDeleteAccount(req, res) {
   try {
     const userId = req.user.id;
+    const { otp } = req.body;
     const db = getDb();
+
+    if (!otp) {
+      return res.status(400).json({ error: 'Verification code is required' });
+    }
+
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const deleteData = otpStore.get(`delete_${user.email}`);
+    if (!deleteData) {
+      return res.status(400).json({ error: 'Deletion request expired or not found' });
+    }
+
+    if (deleteData.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    if (Date.now() > deleteData.expiry) {
+      otpStore.delete(`delete_${user.email}`);
+      return res.status(400).json({ error: 'Verification code expired' });
+    }
 
     // Permanently remove user data
     await db.run('DELETE FROM users WHERE id = ?', [userId]);
+    otpStore.delete(`delete_${user.email}`);
     await logAudit(userId, 'Account permanently deleted', req.ip);
 
     res.status(200).json({ message: 'Your account and all associated data have been permanently deleted.' });

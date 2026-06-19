@@ -283,8 +283,8 @@ export default function AuthPage() {
       const res = await register(signUpUsername, signUpEmail, signUpPassword, isSignUpAdmin ? 'admin' : 'user');
       setRegEmail(signUpEmail);
       
-      setSuccessMsg('Account created successfully. Please enroll your facial biometrics to continue.');
-      setCurrentStep('face_reg');
+      setSuccessMsg('OTP verification code sent to your email. Please verify to complete signup.');
+      setCurrentStep('otp');
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -301,8 +301,8 @@ export default function AuthPage() {
 
     try {
       await verifyOtp(regEmail, otpCode);
-      setSuccessMsg('Email successfully verified. Now capture your facial biometrics.');
-      setCurrentStep('face_reg');
+      setSuccessMsg('Email successfully verified! Setup complete.');
+      setCurrentStep('success');
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -476,23 +476,6 @@ export default function AuthPage() {
               </button>
             </div>
 
-            {/* Signin Method Toggle (Only for standard users) */}
-            {!isAdminSignIn && (
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--card-border)', marginBottom: '24px' }}>
-                <button 
-                  onClick={() => { setSignInMethod('password'); stopCamera(); }}
-                  style={{ flex: 1, padding: '12px', border: 'none', background: 'transparent', color: signInMethod === 'password' ? 'var(--primary)' : 'var(--text-secondary)', borderBottom: signInMethod === 'password' ? '2px solid var(--primary)' : 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
-                >
-                  Password Auth
-                </button>
-                <button 
-                  onClick={() => { setSignInMethod('face'); clearAlerts(); }}
-                  style={{ flex: 1, padding: '12px', border: 'none', background: 'transparent', color: signInMethod === 'face' ? 'var(--primary)' : 'var(--text-secondary)', borderBottom: signInMethod === 'face' ? '2px solid var(--primary)' : 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
-                >
-                  Face Scan Auth
-                </button>
-              </div>
-            )}
 
             {/* Standard Password Form */}
             {(signInMethod === 'password' || isAdminSignIn) && (
@@ -827,7 +810,7 @@ export default function AuthPage() {
 
                 <h2 style={{ fontSize: '1.7rem', fontWeight: 800, marginBottom: '8px' }}>Setup Complete!</h2>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '24px' }}>
-                  Your account is verified, and facial biometric identifiers have been securely saved.
+                  Your account is verified and successfully set up.
                 </p>
 
                 <button 
