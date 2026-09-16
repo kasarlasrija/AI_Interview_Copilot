@@ -84,8 +84,12 @@ export default function AuthPage() {
     try {
       const res = await register(signUpUsername, signUpEmail, signUpPassword, isSignUpAdmin ? 'admin' : 'user');
       setRegEmail(signUpEmail);
-      
-      setSuccessMsg('OTP verification code sent to your email. Please verify to complete signup.');
+      if (res && res.otp) {
+        setOtpCode(res.otp);
+        setSuccessMsg(`OTP verification code generated: ${res.otp}. Please verify to complete signup.`);
+      } else {
+        setSuccessMsg('OTP verification code sent to your email. Please verify to complete signup.');
+      }
       setCurrentStep('otp');
     } catch (err) {
       setErrorMsg(err.message);
@@ -115,9 +119,14 @@ export default function AuthPage() {
     e.preventDefault();
     clearAlerts();
     try {
-      await forgotPassword(forgotEmail);
-      setForgotOtp('123456');
-      setSuccessMsg('Reset request approved. Please enter your new password.');
+      const res = await forgotPassword(forgotEmail);
+      if (res && res.otp) {
+        setForgotOtp(res.otp);
+        setSuccessMsg(`Reset code generated: ${res.otp}. Please enter your new password.`);
+      } else {
+        setForgotOtp('123456');
+        setSuccessMsg('Reset request approved. Please enter your new password.');
+      }
       setForgotStep(2);
     } catch (err) {
       setErrorMsg(err.message);

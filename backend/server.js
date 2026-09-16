@@ -27,7 +27,24 @@ import {
 import { uploadResume, getMyResumes } from './controllers/resumeController.js';
 
 // Interview Controllers
-import { startInterview, submitInterview, getInterviewHistory } from './controllers/interviewController.js';
+import { startInterview, submitInterview, getInterviewHistory, logProctorEvent } from './controllers/interviewController.js';
+
+// Roadmap Controllers
+import { generateRoadmap, getMyRoadmap, toggleRoadmapTask } from './controllers/roadmapController.js';
+
+// Organization Controllers
+import { getOrganizations, createOrganization, deleteOrganization } from './controllers/orgController.js';
+
+// Public & Enterprise API Controllers
+import {
+  getPublicScorecard,
+  getApiKeys,
+  createApiKey,
+  deleteApiKey,
+  getWebhooks,
+  createWebhook,
+  deleteWebhook
+} from './controllers/apiController.js';
 
 // Admin Controllers
 import {
@@ -91,8 +108,17 @@ initDb()
     app.post('/api/interviews/start', authenticateToken, startInterview);
     app.post('/api/interviews/submit', authenticateToken, submitInterview);
     app.get('/api/interviews/history', authenticateToken, getInterviewHistory);
+    app.post('/api/interviews/proctor-log', authenticateToken, logProctorEvent);
 
-    // Admin Routes (Authenticated & Admin role)
+    // AI Roadmap Routes (Authenticated)
+    app.post('/api/roadmaps/generate', authenticateToken, generateRoadmap);
+    app.get('/api/roadmaps/my-roadmap', authenticateToken, getMyRoadmap);
+    app.post('/api/roadmaps/toggle-task', authenticateToken, toggleRoadmapTask);
+
+    // Public REST Scorecard (Unauthenticated)
+    app.get('/api/v1/public/scorecard/:id', getPublicScorecard);
+
+    // Admin & Multi-Tenant B2B Routes (Authenticated & Admin role)
     app.get('/api/admin/users', authenticateToken, authorizeAdmin, getUsers);
     app.post('/api/admin/users/toggle', authenticateToken, authorizeAdmin, toggleUserStatus);
     app.post('/api/admin/users/role', authenticateToken, authorizeAdmin, updateUserRole);
@@ -105,6 +131,20 @@ initDb()
     app.get('/api/admin/config', authenticateToken, authorizeAdmin, getConfig);
     app.post('/api/admin/config', authenticateToken, authorizeAdmin, updateConfig);
 
+    // B2B Organizations (Admin)
+    app.get('/api/admin/orgs', authenticateToken, authorizeAdmin, getOrganizations);
+    app.post('/api/admin/orgs', authenticateToken, authorizeAdmin, createOrganization);
+    app.delete('/api/admin/orgs/:id', authenticateToken, authorizeAdmin, deleteOrganization);
+
+    // Enterprise API Keys & Webhooks (Admin)
+    app.get('/api/admin/api-keys', authenticateToken, authorizeAdmin, getApiKeys);
+    app.post('/api/admin/api-keys', authenticateToken, authorizeAdmin, createApiKey);
+    app.delete('/api/admin/api-keys/:id', authenticateToken, authorizeAdmin, deleteApiKey);
+
+    app.get('/api/admin/webhooks', authenticateToken, authorizeAdmin, getWebhooks);
+    app.post('/api/admin/webhooks', authenticateToken, authorizeAdmin, createWebhook);
+    app.delete('/api/admin/webhooks/:id', authenticateToken, authorizeAdmin, deleteWebhook);
+
     // Health Check
     app.get('/health', (req, res) => res.json({ status: 'OK', uptime: process.uptime() }));
 
@@ -116,4 +156,3 @@ initDb()
     console.error('Failed to initialize database and server:', err);
     process.exit(1);
   });
-// Trigger database re-seed and auto-recovery on restart

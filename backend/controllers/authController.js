@@ -55,6 +55,12 @@ async function logAudit(userId, action, ip) {
 
 async function sendOtpEmail(toEmail, subject, otpCode, purposeText) {
   try {
+    console.log(`\n==================================================`);
+    console.log(`🔑 [SECURE OTP GENERATED] Recipient: ${toEmail}`);
+    console.log(`📌 Purpose: ${subject}`);
+    console.log(`⚡ OTP CODE: ${otpCode}`);
+    console.log(`==================================================\n`);
+
     const db = getDb();
     let host, port, user, pass, enabled;
     let isEthereal = false;
@@ -228,7 +234,8 @@ export async function register(req, res) {
 
     res.status(201).json({
       message: 'OTP verification code sent to your email. Please verify to complete signup.',
-      email
+      email,
+      otp: otpCode
     });
   } catch (err) {
     console.error(err);
@@ -468,7 +475,8 @@ export async function forgotPassword(req, res) {
 
     res.status(200).json({
       message: 'Reset verification code sent to your email.',
-      email
+      email,
+      otp: otpCode
     });
   } catch (err) {
     console.error(err);

@@ -1,5 +1,16 @@
+CREATE TABLE IF NOT EXISTS organizations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  domain TEXT,
+  logo TEXT,
+  primary_color TEXT DEFAULT '#7c3aed',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER,
   email TEXT UNIQUE NOT NULL,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
@@ -14,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS resumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER,
   user_id INTEGER NOT NULL,
   filename TEXT NOT NULL,
   parsed_skills TEXT,
@@ -29,6 +41,7 @@ CREATE TABLE IF NOT EXISTS resumes (
 
 CREATE TABLE IF NOT EXISTS interviews (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER,
   user_id INTEGER NOT NULL,
   role TEXT NOT NULL,
   difficulty TEXT NOT NULL,
@@ -43,10 +56,51 @@ CREATE TABLE IF NOT EXISTS interviews (
 
 CREATE TABLE IF NOT EXISTS question_bank (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER,
   role TEXT NOT NULL,
   category TEXT NOT NULL,
   difficulty TEXT NOT NULL,
   question_text TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS roadmaps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  target_role TEXT NOT NULL,
+  duration_days INTEGER DEFAULT 90,
+  skills_gap TEXT,
+  roadmap_data TEXT NOT NULL,
+  status TEXT DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS proctor_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  interview_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  event_type TEXT NOT NULL,
+  details TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  org_id INTEGER,
+  key_name TEXT NOT NULL,
+  api_key TEXT UNIQUE NOT NULL,
+  permissions TEXT DEFAULT 'read_scorecard',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS webhooks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  org_id INTEGER,
+  target_url TEXT NOT NULL,
+  secret TEXT,
+  events TEXT DEFAULT 'interview.completed',
+  status TEXT DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -61,4 +115,3 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
-

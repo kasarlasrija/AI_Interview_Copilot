@@ -336,3 +336,26 @@ export async function getInterviewHistory(req, res) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export async function logProctorEvent(req, res) {
+  try {
+    const userId = req.user.id;
+    const { interviewId, eventType, details } = req.body;
+    const db = getDb();
+
+    if (!eventType) {
+      return res.status(400).json({ error: 'Event type is required' });
+    }
+
+    await db.run(
+      'INSERT INTO proctor_logs (interview_id, user_id, event_type, details) VALUES (?, ?, ?, ?)',
+      [interviewId || 0, userId, eventType, details || 'Candidate window focus lost / tab switched']
+    );
+
+    res.status(200).json({ message: 'Proctor event logged successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+

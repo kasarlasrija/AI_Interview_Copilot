@@ -48,6 +48,9 @@ class PgDbWrapper {
 
   async run(sql, params) {
     let trimmedSql = sql.trim();
+    if (/^\s*insert\s+or\s+replace\s+into\s+settings/i.test(trimmedSql)) {
+      trimmedSql = 'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value';
+    }
     const isInsert = /^\s*insert\s+/i.test(trimmedSql);
     const isSettings = /insert\s+into\s+settings/i.test(trimmedSql);
     if (isInsert && !isSettings && !/returning\s+/i.test(trimmedSql)) {
@@ -72,37 +75,35 @@ export async function initDb() {
   if (db) return db;
 
   const databaseUrl = process.env.DATABASE_URL;
-
+  let usePostgres = false;
   if (databaseUrl) {
     console.log('PostgreSQL DATABASE_URL found. Initializing PostgreSQL pool...');
-    isPostgres = true;
-
-    const pgConfig = {
-      connectionString: databaseUrl,
-      ssl: databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1')
-        ? false
-        : { rejectUnauthorized: false }
-    };
-
-    const pool = new Pool(pgConfig);
-    
-    // Test connection
     try {
+      const pgConfig = {
+        connectionString: databaseUrl,
+        ssl: databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1')
+          ? false
+          : { rejectUnauthorized: false }
+      };
+
+      const pool = new Pool(pgConfig);
       await pool.query('SELECT NOW()');
       console.log('PostgreSQL database connected successfully.');
+      db = new PgDbWrapper(pool);
+
+      // Read and execute Postgres schema
+      const schemaSql = fs.readFileSync(schemaPgPath, 'utf8');
+      await db.exec(schemaSql);
+      console.log('PostgreSQL schema initialized.');
+      isPostgres = true;
+      usePostgres = true;
     } catch (err) {
       console.error('Failed to connect to PostgreSQL database:', err.message);
-      throw err;
+      console.log('Falling back to SQLite database...');
     }
+  }
 
-    db = new PgDbWrapper(pool);
-
-    // Read and execute Postgres schema
-    const schemaSql = fs.readFileSync(schemaPgPath, 'utf8');
-    await db.exec(schemaSql);
-    console.log('PostgreSQL schema initialized.');
-  } else {
-    console.log('No DATABASE_URL found. Falling back to SQLite...');
+  if (!usePostgres) {
     isPostgres = false;
 
     db = await open({
@@ -113,6 +114,22 @@ export async function initDb() {
     // Read and execute SQLite schema
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
     await db.exec(schemaSql);
+
+    // Auto-migrate missing columns for existing SQLite database
+    const columnsToEnsure = [
+      { table: 'users', col: 'tenant_id', type: 'INTEGER' },
+      { table: 'resumes', col: 'tenant_id', type: 'INTEGER' },
+      { table: 'interviews', col: 'tenant_id', type: 'INTEGER' },
+      { table: 'question_bank', col: 'tenant_id', type: 'INTEGER' }
+    ];
+    for (const item of columnsToEnsure) {
+      try {
+        await db.exec(`ALTER TABLE ${item.table} ADD COLUMN ${item.col} ${item.type}`);
+      } catch (e) {
+        // Column already exists, ignore error
+      }
+    }
+
     console.log('SQLite schema initialized.');
   }
 
